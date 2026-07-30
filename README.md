@@ -1,5 +1,98 @@
 # Kam
 
+Two rim effects, one engine, three platforms.
+
+- **Tide** — a processing indicator. Two waterlines close on the middle of a
+  component's rim and flash when they meet. See [Tide](#tide).
+- **Facet** — a prismatic faceted rim. See [Facet](#facet).
+
+---
+
+# Tide
+
+**Two waterlines meet, and that is the payoff.**
+
+One climbs from beneath the bottom edge, one descends from above the top; each
+carries a bright wobbling meniscus. When they pass, the rim flashes and they
+withdraw. It is deliberately *indeterminate* — no part of it can be misread as a
+percentage — and the same component carries the terminal states, so a spinner is
+never swapped out for an icon.
+
+| State | What the rim does |
+| --- | --- |
+| `idle` | a faint breathing edge, so the border never stops existing |
+| `processing` | the two fronts close, kiss, and withdraw, on a loop |
+| `done` | the fronts stay merged and the flash radiates outward in green |
+| `error` | the rim holds and double-flashes in rose |
+
+### React
+
+```tsx
+import { Tide } from "kam-react";
+
+<div style={{ position: "relative", borderRadius: 20 }}>
+  <Tide state={saving ? "processing" : saved ? "done" : "idle"} preset="deep" />
+  {children}
+</div>;
+```
+
+### React Native
+
+```tsx
+import { Tide } from "kam-react-native";
+
+<View style={{ borderRadius: 20 }}>
+  <Tide state={saving ? "processing" : "idle"} preset="deep" radius={20} />
+  {children}
+</View>;
+```
+
+### SwiftUI
+
+```swift
+CardContent()
+    .padding(20)
+    .background(.black)
+    .tide(saving ? .processing : .idle, options: .deep, radius: 20)
+```
+
+## Tide options
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `speed` | `1` | Cycles per second. One cycle is close, kiss, withdraw. |
+| `band` | `1` | Meniscus thickness, × of 5.5% of the box height. |
+| `reach` | `0.56` | How far each front travels, in box heights. |
+| `cross` | `0` | Extra travel past the middle, so the fronts overshoot. |
+| `kiss` | `1` | Strength of the flash when the fronts pass. |
+| `intensity` | `1` | Output multiplier. |
+
+Three reviewed tunings ship as presets: **calm** (wide and slow, for long
+operations that shouldn't be watched), **precise** (thin core, quick cycle, for
+short operations), and **deep** (wide bloom, fronts overshoot rather than merely
+touch — the most physical).
+
+## Platform notes
+
+- **Web** carries the full four-stop palette and the whole additive pass stack
+  (spill, halo, bloom, core), blurred once per pass on an offscreen layer.
+- **React Native** bakes the `processing` cycle into opacity curves driven by
+  one looping `Animated.Value`, so nothing depends on the JS thread. Because
+  every layer is a real view, the per-stop curves are collapsed to `maxLayers`
+  colour layers per stretch (default 2). On a 320×200 card that is ~252 views
+  rather than ~503 at full fidelity; raise `maxLayers` for a small element. The
+  non-periodic states (`idle`, `done`, `error`) render as a single sampled pose.
+- **SwiftUI** uses one `Canvas` in `TimelineView(.animation)`, with the clock
+  reset on every state change — `done` and `error` decay from t = 0, so without
+  that reset they would be over before they were seen.
+- The hue drifts continuously on web but resets each cycle on React Native,
+  because the drift term is not periodic over one cycle and the bake has to
+  close its loop.
+
+---
+
+# Facet
+
 **A border is a cut edge.**
 
 Most animated borders send a single beam travelling around the perimeter. Kam
@@ -13,7 +106,7 @@ One engine, three renderers:
 
 | Package | Platform | How it draws |
 | --- | --- | --- |
-| [`kam-core`](packages/kam-core) | any | the maths; no rendering, no dependencies |
+| [`kam-core`](packages/kam-core) | any | the maths for both effects; no rendering, no dependencies |
 | [`kam-react`](packages/kam-react) | web | one `<canvas>`, four additive passes |
 | [`kam-react-native`](packages/kam-react-native) | iOS / Android | native-driver opacity, no per-frame JS |
 | [`Kam`](swift) | SwiftUI | a `Canvas` inside `TimelineView(.animation)` |
