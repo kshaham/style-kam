@@ -22,6 +22,17 @@ public struct TideView: View {
     public var cornerRadius: Double
     /// How far the canvas extends past the box so the halo is not cropped.
     public var bleed: Double?
+    /// How the passes composite.
+    ///
+    /// `.plusLighter` is the effect as designed: the passes accumulate like
+    /// light, which is what makes the meniscus read as bright rather than
+    /// merely coloured. It also assumes a dark surface. Adding light to a pale
+    /// background clamps every channel toward 1, so on a light theme the rim
+    /// bleaches to white and the palette stops meaning anything — use
+    /// `.normal` there and the stops paint their own hue.
+    public var blendMode: GraphicsContext.BlendMode
+    /// Freeze the animation on a still frame.
+    public var paused: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The moment the current state began. `done` and `error` decay from t = 0,
@@ -37,7 +48,9 @@ public struct TideView: View {
         glow: Double = 9,
         spill: Double = 0.6,
         cornerRadius: Double = 20,
-        bleed: Double? = nil
+        bleed: Double? = nil,
+        blendMode: GraphicsContext.BlendMode = .plusLighter,
+        paused: Bool = false
     ) {
         self.state = state
         self.options = options
@@ -47,6 +60,8 @@ public struct TideView: View {
         self.spill = spill
         self.cornerRadius = cornerRadius
         self.bleed = bleed
+        self.blendMode = blendMode
+        self.paused = paused
     }
 
     private static let haloBlur = 1.8
@@ -60,18 +75,24 @@ public struct TideView: View {
 
     var margin: Double { max(0, (bleed ?? haloExtent).rounded(.up)) }
 
+    /// Whether the clock is stopped. `speed == 0` is included so a caller can
+    /// freeze the effect through the options alone, as `FacetView` allows.
+    private var isStill: Bool {
+        paused || reduceMotion || options.speed == 0
+    }
+
     public var body: some View {
-        TimelineView(.animation(paused: reduceMotion)) { timeline in
+        TimelineView(.animation(paused: isStill)) { timeline in
             Canvas { context, size in
-                // Frozen at the kiss under reduced motion — the most legible
-                // single frame, and still unmistakably "busy".
-                let t = reduceMotion
+                // Frozen at the kiss when still — the most legible single frame,
+                // and still unmistakably "busy".
+                let t = isStill
                     ? options.cycleDuration * 0.6
                     : timeline.date.timeIntervalSince(epoch)
                 draw(context: context, size: size, time: max(0, t))
             }
         }
-        .onChange(of: state) { _ in epoch = Date() }
+        .resetEpoch(on: state, to: $epoch)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
@@ -108,7 +129,7 @@ public struct TideView: View {
 
         var canvas = context
         canvas.translateBy(x: margin, y: margin)
-        canvas.blendMode = .plusLighter
+        canvas.blendMode = blendMode
 
         // Each blurred pass is drawn into one layer and blurred on composite,
         // rather than blurring every stretch separately.
@@ -170,13 +191,34 @@ public struct TideView: View {
         let lo = Int(scaled.rounded(.down)) % stops
         let hi = (lo + 1) % stops
         let f = scaled - scaled.rounded(.down)
-        let a = palette[lo].rgbComponents
-        let b = palette[hi].rgbComponents
+        let a = palette[lo].rgbaComponents
+        let b = palette[hi].rgbaComponents
+        // Rebuilt in explicit sRGB: `rgbaComponents` reads sRGB values, and
+        // handing them to the default-space initialiser would quietly reinterpret
+        // them in whatever working space SwiftUI picked.
         return Color(
+            .sRGB,
             red: a.0 + (b.0 - a.0) * f,
             green: a.1 + (b.1 - a.1) * f,
-            blue: a.2 + (b.2 - a.2) * f
+            blue: a.2 + (b.2 - a.2) * f,
+            opacity: a.3 + (b.3 - a.3) * f
         )
+    }
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+private extension View {
+    /// Restamp `epoch` whenever `value` changes.
+    ///
+    /// Split out only to keep the deprecation dance in one place: the two-closure
+    /// `onChange` is iOS 17+, and this package still builds for iOS 15.
+    @ViewBuilder
+    func resetEpoch<Value: Equatable>(on value: Value, to epoch: Binding<Date>) -> some View {
+        if #available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *) {
+            onChange(of: value) { _, _ in epoch.wrappedValue = Date() }
+        } else {
+            onChange(of: value) { _ in epoch.wrappedValue = Date() }
+        }
     }
 }
 
@@ -184,13 +226,33 @@ public struct TideView: View {
 private struct TideRim: ViewModifier {
     let view: TideView
     let radius: Double
+    let clip: Bool
 
     func body(content: Content) -> some View {
-        content
-            .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+        clipped(content)
             // Grown past the content so the halo has room; `TideView` insets by
             // the same amount, so the rim still lands exactly on the border.
             .overlay(view.padding(-view.margin).allowsHitTesting(false))
+    }
+
+    /// The convenience clip, and the two reasons to decline it.
+    ///
+    /// It exists so the common case — a plain rounded box — cannot end up with
+    /// content spilling past the rim that is supposed to contain it. But it is a
+    /// `.continuous` squircle while ``Rim`` traces circular arcs, and the two
+    /// diverge most at a capsule, where the whole end cap is corner. It also
+    /// crops anything the host draws outside its own bounds, which is most drop
+    /// shadows. Hosts that already own their silhouette should pass
+    /// `clip: false` and keep it.
+    @ViewBuilder
+    private func clipped(_ content: Content) -> some View {
+        if clip && radius.isFinite {
+            content.clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+        } else if clip {
+            content.clipShape(Capsule(style: .circular))
+        } else {
+            content
+        }
     }
 }
 
@@ -208,6 +270,17 @@ extension View {
     /// The halo extends beyond the view's bounds, so avoid clipping an ancestor
     /// unless you mean to crop it. The state shown here is decorative — announce
     /// it in text alongside, since this view is hidden from assistive tech.
+    ///
+    /// - Parameters:
+    ///   - radius: Corner radius of the rim. ``Rim`` clamps this to half the
+    ///     shorter side, so `.infinity` is a capsule and — on a square — a
+    ///     circle.
+    ///   - blendMode: `.plusLighter` accumulates the passes like light and wants
+    ///     a dark surface; pass `.normal` on a light one or the rim bleaches
+    ///     toward white. See ``TideView/blendMode``.
+    ///   - clip: Whether to clip the content to the rim's shape. Pass `false`
+    ///     for a host that already owns its silhouette or draws outside its
+    ///     bounds — a capsule button with a drop shadow, say.
     public func tide(
         _ state: TideState,
         options: TideOptions = .default,
@@ -215,7 +288,11 @@ extension View {
         radius: Double = 20,
         thickness: Double = 1.5,
         glow: Double = 9,
-        spill: Double = 0.6
+        spill: Double = 0.6,
+        bleed: Double? = nil,
+        blendMode: GraphicsContext.BlendMode = .plusLighter,
+        paused: Bool = false,
+        clip: Bool = true
     ) -> some View {
         modifier(
             TideRim(
@@ -226,9 +303,13 @@ extension View {
                     thickness: thickness,
                     glow: glow,
                     spill: spill,
-                    cornerRadius: radius
+                    cornerRadius: radius,
+                    bleed: bleed,
+                    blendMode: blendMode,
+                    paused: paused
                 ),
-                radius: radius
+                radius: radius,
+                clip: clip
             )
         )
     }

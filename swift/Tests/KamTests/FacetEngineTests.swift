@@ -6,7 +6,13 @@ import XCTest
 final class RimTests: XCTestCase {
     func testPerimeterMatchesRoundedRectangleFormula() {
         let rim = Rim(size: CGSize(width: 200, height: 120), radius: 24)
-        let expected = 2 * (200 - 48) + 2 * (120 - 48) + 2 * .pi * 24
+        // Spelled out one term per line and explicitly typed: as a single
+        // expression of untyped literals plus `.pi`, the type checker times out
+        // and the whole test target fails to build.
+        let horizontalEdges: Double = 2 * (200 - 2 * 24)
+        let verticalEdges: Double = 2 * (120 - 2 * 24)
+        let corners: Double = 2 * .pi * 24
+        let expected = horizontalEdges + verticalEdges + corners
         XCTAssertEqual(rim.length, expected, accuracy: 1e-6)
     }
 
@@ -165,6 +171,15 @@ final class FacetEngineTests: XCTestCase {
         // Some ripple is wanted — that is the crystalline flicker `scatter`
         // produces — but how much of it you get must not depend on whether the
         // box is a wide banner or a tall tile.
+        //
+        // Note what is asserted and what is not. "Spread cuts ripple by at least
+        // a quarter on every box" is NOT the claim and does not hold: a square
+        // hides the least normal-angle variation in its corner arcs of any box,
+        // so it starts near the target already (0.179 unspread, against 0.51 for
+        // a 600x60 banner) and there is correspondingly little left to win —
+        // measured 0.137, a 23% improvement. Demanding a fixed factor there
+        // fails the engine for being right. The claim is that afterwards the
+        // boxes agree with each other.
         let boxes = [
             CGSize(width: 240, height: 140),
             CGSize(width: 600, height: 60),
@@ -177,13 +192,28 @@ final class FacetEngineTests: XCTestCase {
         var without = withSpread
         without.spread = 0
 
+        var spread: [Double] = []
+        var unspread: [Double] = []
+
         for box in boxes {
             let rect = Rim(size: box, radius: 20)
             let a = ripple(withSpread, rect)
             let b = ripple(without, rect)
+            spread.append(a)
+            unspread.append(b)
             XCTAssertLessThan(a, 0.55, "\(box) rippled \(a)")
-            XCTAssertLessThan(a, b * 0.75, "\(box): spread barely helped (\(b) -> \(a))")
+            XCTAssertLessThanOrEqual(a, b, "\(box): spread made it worse (\(b) -> \(a))")
         }
+
+        // The actual thesis, stated as a measurement: with spread on, every
+        // aspect ratio ripples by about the same amount. Measured range 0.071.
+        let range = (spread.max() ?? 0) - (spread.min() ?? 0)
+        XCTAssertLessThan(range, 0.15, "ripple still depends on aspect ratio: \(spread)")
+
+        // And the control: without it, the same four boxes disagree sharply, so
+        // the assertion above is measuring something real rather than a constant.
+        let unspreadRange = (unspread.max() ?? 0) - (unspread.min() ?? 0)
+        XCTAssertGreaterThan(unspreadRange, range * 2, "unspread: \(unspread)")
     }
 
     func testOutputIsPeriodicOverTheCycle() {
