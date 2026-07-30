@@ -224,6 +224,40 @@ Every option means the same thing on all three platforms.
 Renderer-side styling (`thickness`, `glow`, `spill`, `bleed`, `radius`) is per
 platform and documented on each component.
 
+### Rim controls (SwiftUI)
+
+`.tide` and `.facetRim` take three more arguments that decide how the rim sits on
+its host rather than how it looks.
+
+| Argument | Default | What it does |
+| --- | --- | --- |
+| `blendMode` | `.plusLighter` | How the passes composite. See below. |
+| `clip` | `true` | Whether to clip the content to the rim's shape. |
+| `paused` | `false` | Freeze on a still frame. |
+
+**`blendMode`** — the default adds light, which is what makes the meniscus read
+as bright rather than merely coloured, and it assumes a dark surface. Adding
+light to a pale one clamps every channel toward 1: on a cream background an
+accent stroke at 40% opacity comes out pure white and the palette stops meaning
+anything. Pass `.normal` on a light theme and the stops paint their own hue.
+
+**`clip`** — the convenience clip keeps content from spilling past the rim that
+is supposed to contain it, which is right for a plain rounded box. Decline it in
+two cases: when the host draws outside its own bounds, because the clip crops
+drop shadows; and at a capsule, because the clip is a `.continuous` squircle
+while the rim traces circular arcs, and the two diverge most where the whole end
+cap is corner.
+
+**Radius and capsules** — `radius` is clamped to half the shorter side, so
+`.infinity` is a capsule and, on a square, a circle. The caller never has to
+measure the host.
+
+```swift
+Button("Plant it") { }
+    .buttonStyle(.borderedProminent)
+    .tide(saving ? .processing : .idle, radius: .infinity, clip: false)
+```
+
 ### Two options worth understanding
 
 **`ambient`** — a facet only catches the light across half a turn. Without a
@@ -274,8 +308,14 @@ npm run dev        # the demo site
 Swift:
 
 ```bash
-cd swift && swift test
+swift test
 ```
+
+The Swift sources live under `swift/`, but `Package.swift` sits at the repository
+root and points down at them. SwiftPM resolves a git dependency by looking for a
+manifest at the root of the checkout and cannot be pointed at a subdirectory, so
+a manifest under `swift/` alone would make this repository impossible to depend
+on.
 
 ## Demo
 

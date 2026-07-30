@@ -30,6 +30,14 @@ public struct FacetView: View {
     public var bleed: Double?
     /// Freeze the animation on a still frame.
     public var paused: Bool
+    /// How the passes composite.
+    ///
+    /// `.plusLighter` is the effect as designed: overlapping facets accumulate
+    /// like light rather than painting over one another, which assumes a dark
+    /// surface. Adding light to a pale background clamps every channel toward 1,
+    /// so on a light theme the rim bleaches to white and the palette stops
+    /// meaning anything — use `.normal` there and the stops paint their own hue.
+    public var blendMode: GraphicsContext.BlendMode
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -41,7 +49,8 @@ public struct FacetView: View {
         glow: Double = 9,
         spill: Double = 0.6,
         bleed: Double? = nil,
-        paused: Bool = false
+        paused: Bool = false,
+        blendMode: GraphicsContext.BlendMode = .plusLighter
     ) {
         self.colors = colors
         self.options = options
@@ -51,6 +60,7 @@ public struct FacetView: View {
         self.spill = spill
         self.bleed = bleed
         self.paused = paused
+        self.blendMode = blendMode
     }
 
     /// Blur radius and line width of the outermost pass, relative to the style.
@@ -132,7 +142,7 @@ public struct FacetView: View {
         // than painting over one another.
         var canvas = context
         canvas.translateBy(x: margin, y: margin)
-        canvas.blendMode = .plusLighter
+        canvas.blendMode = blendMode
 
         // Each blurred pass is drawn into one layer and blurred on composite,
         // rather than blurring every facet separately.
@@ -192,15 +202,24 @@ public struct FacetView: View {
 
     /// Mix palette stops by the weights the engine produced.
     private func mix(_ palette: [Color], _ weights: [Double]) -> Color {
-        var r = 0.0, g = 0.0, b = 0.0, total = 0.0
+        var r = 0.0, g = 0.0, b = 0.0, a = 0.0, total = 0.0
         for (index, weight) in weights.enumerated() where weight > 0 {
-            let components = palette[index].rgbComponents
+            let components = palette[index].rgbaComponents
             r += components.0 * weight
             g += components.1 * weight
             b += components.2 * weight
+            a += components.3 * weight
             total += weight
         }
         guard total > 0 else { return .clear }
-        return Color(red: r / total, green: g / total, blue: b / total)
+        // Explicit sRGB: `rgbaComponents` reads sRGB values, and the default-space
+        // initialiser would quietly reinterpret them in another working space.
+        return Color(
+            .sRGB,
+            red: r / total,
+            green: g / total,
+            blue: b / total,
+            opacity: a / total
+        )
     }
 }
