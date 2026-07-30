@@ -1,0 +1,507 @@
+:root {
+  --ink: #f4f5fb;
+  --muted: #8a8fa8;
+  --dim: #5f6479;
+  --bg: #07070c;
+  --panel: #0c0d15;
+  --panel-2: #101220;
+  --line: #1c1f31;
+  --accent: #a78bfa;
+
+  color-scheme: dark;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, sans-serif;
+  font-synthesis-weight: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The rims' halos reach past their boxes and, near the viewport edge, past the
+   viewport itself. `clip` trims that without creating a scroll container, so
+   viewport itself. Both elements need it: the root's overflow propagates to the
+   viewport and leaves the root itself `visible`, so on its own the content
+   still overflows an unclipped body box. `clip` rather than `hidden` because
+   `hidden` would make body a scroll container and strand the sticky playground
+   preview. */
+html,
+body {
+  overflow-x: clip;
+}
+
+/* A very slow drift behind everything, so the page itself feels lit. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -20%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(48rem 32rem at 18% 8%, rgba(139, 92, 246, 0.16), transparent 60%),
+    radial-gradient(40rem 30rem at 88% 22%, rgba(34, 211, 238, 0.12), transparent 62%),
+    radial-gradient(44rem 34rem at 60% 100%, rgba(244, 114, 182, 0.1), transparent 60%);
+  filter: blur(8px);
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+.page {
+  max-width: 78rem;
+  margin: 0 auto;
+  padding: 0 1.5rem 8rem;
+}
+
+/* ---------- type ---------- */
+
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin: 0 0 1rem;
+}
+
+h1 {
+  font-size: clamp(2.6rem, 7vw, 5rem);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+  font-weight: 600;
+  margin: 0 0 1.25rem;
+}
+
+h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  letter-spacing: -0.025em;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
+
+h3 {
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+  margin: 0 0 0.35rem;
+}
+
+p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.lede {
+  font-size: 1.12rem;
+  max-width: 44rem;
+}
+
+code,
+pre {
+  font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+}
+
+/* ---------- layout ---------- */
+
+.hero {
+  padding: clamp(4rem, 12vh, 9rem) 0 clamp(3rem, 8vh, 6rem);
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: clamp(2rem, 5vw, 4.5rem);
+  align-items: center;
+}
+
+@media (max-width: 60rem) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+section {
+  padding-top: clamp(3.5rem, 9vh, 6rem);
+}
+
+.section-head {
+  margin-bottom: 2rem;
+  max-width: 46rem;
+}
+
+/* ---------- surfaces ---------- */
+
+.surface {
+  position: relative;
+  border-radius: 20px;
+  background:
+    linear-gradient(168deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    var(--panel);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 24px 60px -30px rgba(0, 0, 0, 0.9);
+  /* Deliberately not `overflow: hidden` — that would crop the rim's halo. */
+}
+
+.hero-stage {
+  border-radius: 26px;
+  padding: clamp(2rem, 4vw, 3rem);
+  min-height: 21rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.stage-readout {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.readout {
+  min-width: 5rem;
+}
+
+.readout dt {
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 0.3rem;
+}
+
+.readout dd {
+  margin: 0;
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ---------- preset gallery ---------- */
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1.25rem;
+}
+
+.tile {
+  border-radius: 18px;
+  padding: 1.5rem;
+  min-height: 11.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  cursor: pointer;
+  border: 0;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  transition: transform 160ms ease;
+}
+
+.tile:hover {
+  transform: translateY(-2px);
+}
+
+.tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.tile[aria-pressed="true"] .tile-name::after {
+  content: " ·  in playground";
+  color: var(--dim);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.tile-name {
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tile-note {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.swatches {
+  display: flex;
+  gap: 0.3rem;
+  margin-bottom: auto;
+}
+
+.swatch {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  box-shadow: 0 0 12px -2px currentColor;
+}
+
+/* ---------- playground ---------- */
+
+.playground {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 62rem) {
+  .playground {
+    grid-template-columns: 1fr;
+  }
+}
+
+.canvas-well {
+  overflow: visible;
+  position: sticky;
+  top: 1.5rem;
+  display: grid;
+  place-items: center;
+  min-height: 26rem;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(60% 60% at 50% 40%, rgba(255, 255, 255, 0.03), transparent 70%),
+    var(--panel);
+}
+
+.specimen {
+  border-radius: 22px;
+  padding: 2.25rem;
+  width: min(100%, 26rem);
+  background: linear-gradient(170deg, #101321, #08090f);
+}
+
+.specimen-shapes {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.75rem;
+  align-items: center;
+}
+
+.pill {
+  border-radius: 999px;
+  padding: 0.65rem 1.35rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: #0b0d16;
+  position: relative;
+}
+
+.chip {
+  position: relative;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 14px;
+  background: #0b0d16;
+}
+
+.controls {
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: 1.25rem;
+}
+
+.control-group + .control-group {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+}
+
+.control-group h3 {
+  color: var(--ink);
+}
+
+.control-group > p {
+  font-size: 0.82rem;
+  margin-bottom: 1rem;
+}
+
+.control {
+  display: block;
+  margin-bottom: 0.9rem;
+}
+
+.control-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.control-name {
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.control-value {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.control-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--dim);
+  line-height: 1.45;
+  margin-top: 0.3rem;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 1.25rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -5px;
+  border-radius: 999px;
+  background: var(--ink);
+  box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.16);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.16);
+}
+
+input[type="range"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.reset {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.reset:hover {
+  color: var(--ink);
+  border-color: #2a2e45;
+}
+
+/* ---------- code ---------- */
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.tab {
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.tab[aria-selected="true"] {
+  background: var(--panel-2);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+pre {
+  margin: 0;
+  padding: 1.25rem;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: #08090f;
+  overflow-x: auto;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: #c6cbe0;
+  tab-size: 2;
+}
+
+/* ---------- notes ---------- */
+
+.notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.25rem;
+}
+
+.note {
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: 1.4rem;
+}
+
+.note p {
+  font-size: 0.9rem;
+}
+
+footer {
+  padding-top: 5rem;
+  color: var(--dim);
+  font-size: 0.85rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile {
+    transition: none;
+  }
+}

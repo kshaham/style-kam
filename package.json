@@ -1,0 +1,22 @@
+{
+  "name": "style-kam",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Kam \u2014 a prismatic faceted-rim component for React, React Native and SwiftUI.",
+  "workspaces": [
+    "packages/kam-core",
+    "packages/kam-react",
+    "packages/kam-react-native",
+    "examples/web"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace kam-core && npm run build --workspace kam-react && npm run build --workspace kam-react-native",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev": "npm run dev --workspace @kam/example-web",
+    "build:site": "npm run build --workspace kam-core && npm run build --workspace kam-react && npm run build --workspace @kam/example-web",
+    "test": "npm run build --workspace kam-core && node --test \"packages/kam-core/test/*.test.js\""
+  },
+  "devDependencies": {
+    "playwright": "^1.62.0"
+  }
+}
